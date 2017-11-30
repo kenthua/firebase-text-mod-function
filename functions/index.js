@@ -20,13 +20,48 @@ const capitalizeSentence = require('capitalize-sentence');
 const Filter = require('bad-words');
 const badWordsFilter = new Filter();
 
+// The Firebase Admin SDK to access the Firebase Realtime Database. 
+const admin = require('firebase-admin');
+admin.initializeApp(functions.config().firebase);
+const fbDbRefUpdate = admin.database().ref('/updates');
+
 exports.doSomething = functions.https.onRequest((req, res) => {
-  const duration = req.query.duration;
+  const promiseDelay1 = req.query.promiseDelay1;
+  const promiseDelay2 = req.query.promiseDelay2;
+  const sleepDuration = req.query.sleepDuration;
   const text = req.query.text;
+  console.log('START');
   console.log('Text: ', text);
-  console.log('Sleep: ', duration);
-  sleep(duration);
-  console.log('Wakeup');
+  console.log('Sleep Duration: ', sleepDuration);
+  console.log('Promise Delay 1', promiseDelay1);
+  console.log('Promise Delay 2', promiseDelay2);
+  
+  //really sleep
+  console.log('Sleep Start');
+  sleep(sleepDuration);
+  console.log('Sleep End');
+
+  // testing promise
+  console.log('Delay 1', promiseDelay1);
+  var delay1 = delay(promiseDelay1).then(() => {
+    console.log('In Delay1 function call: ', promiseDelay1);
+    fbDbRefUpdate.update({
+      inCall1: true
+    });
+  });
+  console.log('Delay 2', promiseDelay2);  
+  var delay2 = delay(promiseDelay2).then(() => {
+    console.log('In Delay2 function call: ', promiseDelay2);
+    fbDbRefUpdate.update({
+      inCall2: true
+    });
+  });  
+
+  Promise.all([delay1, delay2]).then(() => {
+    console.log('Promise all done');
+  });
+
+  console.log('END')
   res.redirect(200, "/")
 });
 
@@ -39,12 +74,37 @@ function sleep(milliseconds) {
   }
 }
 
+function delay(ms) {
+  return new Promise((resolve) => { 
+    setTimeout(resolve, ms);
+    console.log('In delay function');
+    fbDbRefUpdate.update({
+      delay: ms,
+      inFunction: true
+    });
+  });
+}
+
 exports.updates = functions.database
   .ref('/messages/{messageId}').onUpdate(event => {
     console.log('OnUpdate START');
     const message = event.data.val();
     console.log('message', message)
     console.log('message text', message.text);
+    
+    const { exec } = require('child_process');
+    exec('free -m', (err, stdout, stderr) => {
+      if (err) {
+        console.log(err, 'err could not execute');
+        // node couldn't execute the command
+        return;
+      }
+    
+      // the *entire* stdout and stderr (buffered)
+      console.log(`stdout: ${stdout}`);
+      console.log(`stderr: ${stderr}`);
+    });
+
     // this is needed if we make an update on the return function, so we don't infinite loop the onUpdate event
     if(message.updated == true) {
       return
