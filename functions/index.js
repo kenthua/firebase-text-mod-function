@@ -45,14 +45,16 @@ exports.updates = functions.database
     const message = event.data.val();
     console.log('message', message)
     console.log('message text', message.text);
-    //if(message.updated == true) {
-    //  return
-    //}
+    // this is needed if we make an update on the return function, so we don't infinite loop the onUpdate event
+    if(message.updated == true) {
+      return
+    }
     const updated = true;
     console.log('OnUpdate END');
-    //return event.data.adminRef.update({
-    //  updated: true
-    //});
+    
+    return event.data.adminRef.update({
+      updated: true
+    });
     
   })
 
