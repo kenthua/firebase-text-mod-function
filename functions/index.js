@@ -61,16 +61,19 @@ exports.onDBEntryUpdate = functions.database
         inDBCall2: true
       });
     });  
-
-    Promise.all([delay1, delay2])
+// if return is inside the promise i.e. reutrn fbDbTest2RefUpdate, it the promises will 
+// finish after the function is complete.  
+// non-HTTP functions need to return promises this way, while http is based on the
+// doSomethingPromiseWrapped example
+    return Promise.all([delay1, delay2])
       .then(() => {
-        return fbDbTest2RefUpdate.update({
+        fbDbTest2RefUpdate.update({
           updatedDB: true
         });
       })
       .catch(err => {
         console.error(err);
-        return fbDbTest2RefUpdate.update({
+        fbDbTest2RefUpdate.update({
           updatedDB: false
         });
       });
