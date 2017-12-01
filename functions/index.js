@@ -32,7 +32,7 @@ exports.onDBEntryUpdate = functions.database
     const message = event.data.val();
 
     const promiseDelay1 = message.promiseDelay1;
-    const promiseDelay2 = message.promiseDelay2;
+    const promiseDelay2 = message.promiseDelay2; 
     const sleepDuration = message.sleepDuration;
     const text = message.text;
     console.log('START');
@@ -64,13 +64,13 @@ exports.onDBEntryUpdate = functions.database
 
     Promise.all([delay1, delay2])
       .then(() => {
-        fbDbTest2RefUpdate.update({
+        return fbDbTest2RefUpdate.update({
           updatedDB: true
         });
       })
       .catch(err => {
         console.error(err);
-        fbDbTest2RefUpdate.update({
+        return fbDbTest2RefUpdate.update({
           updatedDB: false
         });
       });
