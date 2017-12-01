@@ -23,7 +23,101 @@ const badWordsFilter = new Filter();
 // The Firebase Admin SDK to access the Firebase Realtime Database. 
 const admin = require('firebase-admin');
 admin.initializeApp(functions.config().firebase);
-const fbDbRefUpdate = admin.database().ref('/updates');
+const fbDbTest1RefUpdate = admin.database().ref('/updates/http');
+const fbDbTest2RefUpdate = admin.database().ref('/updates/db');
+const fbDbTestRefUpdate = admin.database().ref('/updates');
+
+exports.onDBEntryUpdate = functions.database
+  .ref('/test/{testId}').onUpdate(event => {
+    const message = event.data.val();
+
+    const promiseDelay1 = message.promiseDelay1;
+    const promiseDelay2 = message.promiseDelay2;
+    const sleepDuration = message.sleepDuration;
+    const text = message.text;
+    console.log('START');
+    console.log('Text: ', text);
+    console.log('Sleep Duration: ', sleepDuration);
+    console.log('Promise Delay 1', promiseDelay1);
+    console.log('Promise Delay 2', promiseDelay2);
+    
+    //really sleep
+    console.log('Sleep Start');
+    sleep(sleepDuration);
+    console.log('Sleep End');
+
+    // testing promise
+    console.log('Delay 1', promiseDelay1);
+    var delay1 = delay(promiseDelay1).then(() => {
+      console.log('In Delay 1 function call: ', promiseDelay1);
+      fbDbTest2RefUpdate.update({
+        inDBCall1: true
+      });
+    });
+    console.log('Delay 2', promiseDelay2);  
+    var delay2 = delay(promiseDelay2).then(() => {
+      console.log('In Delay 2 function call: ', promiseDelay2);
+      fbDbTest2RefUpdate.update({
+        inDBCall2: true
+      });
+    });  
+
+    Promise.all([delay1, delay2])
+      .then(() => {
+        fbDbTest2RefUpdate.update({
+          updatedDB: true
+        });
+      })
+      .catch(err => {
+        console.error(err);
+        fbDbTest2RefUpdate.update({
+          updatedDB: false
+        });
+      });
+  });
+
+exports.doSomethingPromiseWrapped = functions.https.onRequest((req, res) => {
+  const promiseDelay1 = req.query.promiseDelay1;
+  const promiseDelay2 = req.query.promiseDelay2;
+  const sleepDuration = req.query.sleepDuration;
+  const text = req.query.text;
+  console.log('START');
+  console.log('Text: ', text);
+  console.log('Sleep Duration: ', sleepDuration);
+  console.log('Promise Delay 1', promiseDelay1);
+  console.log('Promise Delay 2', promiseDelay2);
+  
+  //really sleep
+  console.log('Sleep Start');
+  sleep(sleepDuration);
+  console.log('Sleep End');
+
+  // testing promise
+  console.log('Delay 1', promiseDelay1);
+  var delay1 = delay(promiseDelay1).then(() => {
+    console.log('In Delay 1 function call: ', promiseDelay1);
+    fbDbTest1RefUpdate.update({
+      inHTTPCall1: true
+    });
+  });
+  console.log('Delay 2', promiseDelay2);  
+  var delay2 = delay(promiseDelay2).then(() => {
+    console.log('In Delay 2 function call: ', promiseDelay2);
+    fbDbTest1RefUpdate.update({
+      inHTTPCall2: true
+    });
+  });  
+
+  Promise.all([delay1, delay2])
+    .then(() => {
+      res.redirect(200, '/');
+    })
+    .catch(err => {
+      console.error(err);
+      res.sendStatus(500);
+    });
+
+});
 
 exports.doSomething = functions.https.onRequest((req, res) => {
   const promiseDelay1 = req.query.promiseDelay1;
@@ -44,16 +138,16 @@ exports.doSomething = functions.https.onRequest((req, res) => {
   // testing promise
   console.log('Delay 1', promiseDelay1);
   var delay1 = delay(promiseDelay1).then(() => {
-    console.log('In Delay1 function call: ', promiseDelay1);
-    fbDbRefUpdate.update({
-      inCall1: true
+    console.log('In Delay 1 function call: ', promiseDelay1);
+    fbDbTest1RefUpdate.update({
+      inHTTPCall1: true
     });
   });
   console.log('Delay 2', promiseDelay2);  
   var delay2 = delay(promiseDelay2).then(() => {
-    console.log('In Delay2 function call: ', promiseDelay2);
-    fbDbRefUpdate.update({
-      inCall2: true
+    console.log('In Delay 2 function call: ', promiseDelay2);
+    fbDbTest1RefUpdate.update({
+      inHTTPCall2: true
     });
   });  
 
@@ -78,7 +172,7 @@ function delay(ms) {
   return new Promise((resolve) => { 
     setTimeout(resolve, ms);
     console.log('In delay function');
-    fbDbRefUpdate.update({
+    fbDbTestRefUpdate.update({
       delay: ms,
       inFunction: true
     });
@@ -115,30 +209,30 @@ exports.updates = functions.database
     return event.data.adminRef.update({
       updated: true
     });
-    
+
   })
 
 // Moderates messages by lowering all uppercase messages and removing swearwords.
 exports.moderator = functions.database
-    .ref('/messages/{messageId}').onWrite(event => {
-      const message = event.data.val();
+  .ref('/messages/{messageId}').onWrite(event => {
+    const message = event.data.val();
 
-      if (message && !message.sanitized) {
-        // Retrieved the message values.
-        console.log('Retrieved message content: ', message);
+    if (message && !message.sanitized) {
+      // Retrieved the message values.
+      console.log('Retrieved message content: ', message);
 
-        // Run moderation checks on on the message and moderate if needed.
-        const moderatedMessage = moderateMessage(message.text);
+      // Run moderation checks on on the message and moderate if needed.
+      const moderatedMessage = moderateMessage(message.text);
 
-        // Update the Firebase DB with checked message.
-        console.log('Message has been moderated. Saving to DB: ', moderatedMessage);
-        return event.data.adminRef.update({
-          text: moderatedMessage,
-          sanitized: true,
-          moderated: message.text !== moderatedMessage
-        });
-      }
-    });
+      // Update the Firebase DB with checked message.
+      console.log('Message has been moderated. Saving to DB: ', moderatedMessage);
+      return event.data.adminRef.update({
+        text: moderatedMessage,
+        sanitized: true,
+        moderated: message.text !== moderatedMessage
+      });
+    }
+  });
 
 // Moderates the given message if appropriate.
 function moderateMessage(message) {

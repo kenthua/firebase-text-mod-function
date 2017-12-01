@@ -1,0 +1,10 @@
+{
+  "test" : {
+    "123" : {
+      "text" : "Hello",
+      "promiseDelay1" : 10000,
+      "promiseDelay2" : 20000,
+      "sleepDuration" : 5000
+    }
+  }
+}
